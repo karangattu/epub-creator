@@ -42,6 +42,23 @@ function debounce(func, wait) {
   };
 }
 
+// Markdown detection helper
+function isMarkdown(text) {
+  if (!text) return false;
+  // Check for common markdown indicators
+  const indicators = [
+    /^#+\s/m,                  // Headers
+    /\[.+?\]\(.+?\)/,          // Links
+    /(\*\*|__)(.*?)\1/,        // Bold
+    /(\*|_)(.*?)\1/,           // Italic
+    /^\s*[-*+]\s+/m,           // Bullet list
+    /^\s*\d+\.\s+/m,           // Numbered list
+    /^\s*>\s+/m,               // Blockquote
+    /```[\s\S]*?```/           // Code blocks
+  ];
+  return indicators.some(regex => regex.test(text));
+}
+
 // Initialize Application
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
@@ -212,6 +229,27 @@ function bindEvents() {
     }
   });
 
+  // Hover state tracking on the cover dropzone to enable smart shortcut routing
+  let isHoveringCover = false;
+  coverZone.addEventListener("mouseenter", () => {
+    isHoveringCover = true;
+  });
+  coverZone.addEventListener("mouseleave", () => {
+    isHoveringCover = false;
+  });
+
+  // OS Detection for routing Cmd+V (Mac) or Ctrl+V (Windows/Linux) to the cover zone
+  const isMac = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent || navigator.platform);
+  window.addEventListener("keydown", (e) => {
+    const isPasteShortcut = isMac 
+      ? (e.metaKey && e.key.toLowerCase() === "v") 
+      : (e.ctrlKey && e.key.toLowerCase() === "v");
+      
+    if (isPasteShortcut && isHoveringCover) {
+      coverZone.focus();
+    }
+  });
+
   // Drag and Drop Cover
   coverZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -259,14 +297,34 @@ function bindEvents() {
     }
   });
 
-  // Intercept Paste for Image pastes
+  // Intercept Paste for Image and Markdown pastes
   editorBody.addEventListener("paste", (e) => {
+    // 1. Check if files/images are pasted
     const items = (e.clipboardData || e.originalEvent.clipboardData).items;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image") !== -1) {
         e.preventDefault();
         const blob = items[i].getAsFile();
         handlePasteImage(blob);
+        return; // Complete handoff
+      }
+    }
+
+    // 2. Check if text is markdown content
+    const text = (e.clipboardData || e.originalEvent.clipboardData).getData("text/plain");
+    if (text && isMarkdown(text)) {
+      e.preventDefault();
+      // Render markdown to HTML using marked.js, fall back to line breaks if not loaded
+      const htmlContent = window.marked ? window.marked.parse(text) : text.replace(/\n/g, "<br>");
+      document.execCommand("insertHTML", false, htmlContent);
+      
+      // Update state
+      if (state.activeItemId) {
+        const item = state.items.find(i => i.id === state.activeItemId);
+        if (item) {
+          item.content = editorBody.innerHTML;
+          saveBookToStorage();
+        }
       }
     }
   });
@@ -355,6 +413,173 @@ function bindEvents() {
 
   // Trigger Export Compilation
   document.getElementById("compile-btn").addEventListener("click", triggerEPUBExport);
+
+  // Markdown File Imports
+  const importPageBtn = document.getElementById("import-page-btn");
+  const importChapterBtn = document.getElementById("import-chapter-btn");
+  const mdInput = document.createElement("input");
+  mdInput.type = "file";
+  mdInput.accept = ".md,.txt";
+  
+  let targetIsChapter = false;
+  mdInput.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+      handleMarkdownImport(e.target.files[0], targetIsChapter);
+      mdInput.value = ""; // Reset
+    }
+  });
+
+  importPageBtn.addEventListener("click", () => {
+    targetIsChapter = false;
+    mdInput.click();
+  });
+  importChapterBtn.addEventListener("click", () => {
+    targetIsChapter = true;
+    mdInput.click();
+  });
+
+  // Image popover UI
+  initImagePopover();
+}
+
+// Handle Markdown File Import
+function handleMarkdownImport(file, isChapter) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let text = e.target.result;
+    let title = file.name.replace(/\.[^/.]+$/, ""); // Default to filename
+    
+    // Extract first H1 markdown heading if exists
+    const h1Match = text.match(/^#\s+(.+)$/m);
+    if (h1Match) {
+      title = h1Match[1].trim();
+      // Remove H1 line to prevent duplicate title in document body
+      text = text.replace(/^#\s+.+$/m, "").trim();
+    }
+
+    // Convert markdown text to HTML
+    const htmlContent = window.marked ? window.marked.parse(text) : text.replace(/\n/g, "<br>");
+    
+    const id = `item-${Date.now()}`;
+    const newItem = {
+      id: id,
+      title: title,
+      content: htmlContent,
+      isChapter: isChapter
+    };
+
+    state.items.push(newItem);
+    renderSidebar();
+    selectItem(id);
+    saveBookToStorage();
+  };
+  reader.readAsText(file);
+}
+
+// Active image option tracking
+let activeImage = null;
+
+// Initialize Floating Image Popover UI
+function initImagePopover() {
+  const editorBody = document.getElementById("editor-body");
+  const popover = document.getElementById("image-popover");
+  
+  // Align buttons
+  const alignLeftBtn = document.getElementById("img-align-left");
+  const alignCenterBtn = document.getElementById("img-align-center");
+  const alignRightBtn = document.getElementById("img-align-right");
+  const deleteBtn = document.getElementById("img-delete");
+
+  // Clicking an image in the editor shows the popover
+  editorBody.addEventListener("click", (e) => {
+    if (e.target.tagName.toLowerCase() === "img") {
+      activeImage = e.target;
+      positionPopover(activeImage);
+    } else {
+      hidePopover();
+    }
+  });
+
+  // Hide popover if clicking outside
+  document.addEventListener("click", (e) => {
+    if (!popover.contains(e.target) && e.target.tagName.toLowerCase() !== "img") {
+      hidePopover();
+    }
+  });
+
+  // Hide popover on scroll
+  document.querySelector(".editor-container").addEventListener("scroll", hidePopover);
+
+  function positionPopover(img) {
+    popover.style.display = "flex";
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = document.querySelector(".app-editor-area").getBoundingClientRect();
+    
+    // Position popover centered above the image, offset by container position
+    const left = imgRect.left - containerRect.left + (imgRect.width / 2) - (popover.offsetWidth / 2);
+    const top = imgRect.top - containerRect.top - popover.offsetHeight - 8;
+    
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+  }
+
+  function hidePopover() {
+    popover.style.display = "none";
+  }
+
+  // Alignment Handlers
+  alignLeftBtn.addEventListener("click", () => {
+    if (activeImage) {
+      activeImage.style.margin = "1em auto 1em 0";
+      activeImage.style.display = "block";
+      syncEditorContent();
+      hidePopover();
+    }
+  });
+
+  alignCenterBtn.addEventListener("click", () => {
+    if (activeImage) {
+      activeImage.style.margin = "1em auto";
+      activeImage.style.display = "block";
+      syncEditorContent();
+      hidePopover();
+    }
+  });
+
+  alignRightBtn.addEventListener("click", () => {
+    if (activeImage) {
+      activeImage.style.margin = "1em 0 1em auto";
+      activeImage.style.display = "block";
+      syncEditorContent();
+      hidePopover();
+    }
+  });
+
+  // Delete Handler
+  deleteBtn.addEventListener("click", () => {
+    if (activeImage) {
+      // Find and delete local cached image if applicable
+      const epubSrc = activeImage.getAttribute("data-epub-src");
+      if (epubSrc && state.images[epubSrc]) {
+        delete state.images[epubSrc];
+      }
+      
+      activeImage.remove();
+      activeImage = null;
+      hidePopover();
+      syncEditorContent();
+    }
+  });
+
+  function syncEditorContent() {
+    if (state.activeItemId) {
+      const item = state.items.find(i => i.id === state.activeItemId);
+      if (item) {
+        item.content = editorBody.innerHTML;
+        saveBookToStorage();
+      }
+    }
+  }
 }
 
 // Handle Cover Image upload

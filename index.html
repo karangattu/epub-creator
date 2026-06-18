@@ -17,6 +17,9 @@
   <!-- JSZip Library for client-side packaging -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   
+  <!-- Marked Library for client-side markdown parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js" defer></script>
+  
   <!-- App JS Scripts -->
   <script src="epub-builder.js" defer></script>
   <script src="app.js" defer></script>
@@ -70,9 +73,14 @@
         <!-- Section: Loose pages (without chapters) -->
         <div class="nav-header">
           <span class="nav-title">Loose Pages</span>
-          <button class="nav-action-btn" id="add-page-btn" title="Add Page Without Chapter">
-            <i class="bi bi-plus-lg"></i>
-          </button>
+          <div style="display: flex; gap: 4px;">
+            <button class="nav-action-btn" id="import-page-btn" title="Import Markdown File as Page">
+              <i class="bi bi-file-earmark-arrow-up"></i>
+            </button>
+            <button class="nav-action-btn" id="add-page-btn" title="Add Page Without Chapter">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
         </div>
         <ul class="nav-list" id="loose-pages-list">
           <!-- Populated by JS -->
@@ -83,9 +91,14 @@
         <!-- Section: Chapters -->
         <div class="nav-header">
           <span class="nav-title">Book Chapters</span>
-          <button class="nav-action-btn" id="add-chapter-btn" title="Add Chapter">
-            <i class="bi bi-plus-lg"></i>
-          </button>
+          <div style="display: flex; gap: 4px;">
+            <button class="nav-action-btn" id="import-chapter-btn" title="Import Markdown File as Chapter">
+              <i class="bi bi-journal-arrow-up"></i>
+            </button>
+            <button class="nav-action-btn" id="add-chapter-btn" title="Add Chapter">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
         </div>
         <ul class="nav-list" id="chapters-list">
           <!-- Populated by JS -->
@@ -95,6 +108,14 @@
 
     <!-- Center Canvas (WYSIWYG Editor) -->
     <main class="app-editor-area">
+      <!-- Floating Image options popover -->
+      <div class="image-options-popover" id="image-popover" style="display: none;">
+        <button class="toolbar-btn" id="img-align-left" title="Align Left"><i class="bi bi-align-left"></i></button>
+        <button class="toolbar-btn" id="img-align-center" title="Align Center"><i class="bi bi-align-center"></i></button>
+        <button class="toolbar-btn" id="img-align-right" title="Align Right"><i class="bi bi-align-right"></i></button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" id="img-delete" title="Delete Image" style="color: var(--danger-color);"><i class="bi bi-trash"></i></button>
+      </div>
       <!-- Formatting Toolbar -->
       <div class="editor-toolbar">
         <!-- Paragraph formats -->

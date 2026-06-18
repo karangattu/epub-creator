@@ -435,6 +435,47 @@ li {
   margin-bottom: 0.5em;
 }
 
+pre {
+  background-color: #f4f4f4;
+  border: 1px solid #dddddd;
+  border-radius: 4px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+code {
+  font-family: monospace, serif;
+  font-size: 0.9em;
+  background-color: #f4f4f4;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.85em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+}
+
+th, td {
+  border: 1px solid #dddddd;
+  padding: 0.6em 0.8em;
+  text-align: left;
+}
+
+th {
+  background-color: #f8f8f8;
+  font-weight: bold;
+}
+
 .koboSpan {
   /* Empty by default - used by Kobo Access engine */
 }`;
