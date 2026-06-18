@@ -185,6 +185,60 @@ function blobToBase64(blob) {
 
 // Event Bindings
 function bindEvents() {
+  // Reset App Button
+  const resetBtn = document.getElementById("reset-app-btn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      const confirmReset = confirm(
+        "Are you sure you want to reset everything? This will clear all pages, chapters, metadata, covers, and local storage data. This action cannot be undone."
+      );
+      if (confirmReset) {
+        // Clear local storage
+        localStorage.removeItem("epub-creator-draft");
+        
+        // Revoke cover image object URL
+        if (state.coverImageURL) {
+          URL.revokeObjectURL(state.coverImageURL);
+          state.coverImageURL = null;
+        }
+        
+        // Reset state object
+        state.title = "";
+        state.author = "";
+        state.publisher = "Self-Published";
+        state.language = "en";
+        state.uuid = generateUUID();
+        state.coverImage = null;
+        state.coverImageType = null;
+        state.images = {};
+        state.activeItemId = null;
+        state.items = [
+          { id: "intro-1", title: "Introduction", content: "<p>Welcome to your new book. Start writing here...</p>", isChapter: false },
+          { id: "chapter-1", title: "Chapter 1: The Beginning", content: "<p>Once upon a time...</p>", isChapter: true }
+        ];
+
+        // Reset UI form inputs
+        document.getElementById("book-title-input").value = "";
+        document.getElementById("book-author-input").value = "";
+        document.getElementById("book-publisher-input").value = "Self-Published";
+        document.getElementById("book-lang-input").value = "en";
+
+        // Remove cover image preview
+        const container = document.getElementById("cover-dropzone");
+        const img = container.querySelector(".cover-preview-img");
+        const btn = container.querySelector(".cover-remove-btn");
+        if (img) img.remove();
+        if (btn) btn.remove();
+
+        // Re-render sidebar & select default item
+        renderSidebar();
+        selectDefaultItem();
+        
+        updateStatusBar("Book reset successfully.");
+      }
+    });
+  }
+
   // Theme Toggle
   document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
 
