@@ -352,8 +352,15 @@ function bindEvents() {
       const cmd = targetBtn.getAttribute("data-command");
       const val = targetBtn.getAttribute("data-value") || null;
       
+      let finalVal = val;
+      if (cmd === "createLink") {
+        const url = prompt("Enter link URL:", "https://");
+        if (!url) return; // Abort if user canceled or entered empty URL
+        finalVal = url;
+      }
+      
       // Execute command on editable iframe or div
-      document.execCommand(cmd, false, val);
+      document.execCommand(cmd, false, finalVal);
       editorBody.focus();
       
       // Sync editor status after change
@@ -373,6 +380,13 @@ function bindEvents() {
       document.execCommand("formatBlock", false, val);
       editorBody.focus();
       e.target.value = ""; // Reset value for next select
+      
+      // Sync editor status after change
+      if (state.activeItemId) {
+        const item = state.items.find(i => i.id === state.activeItemId);
+        if (item) item.content = editorBody.innerHTML;
+        saveBookToStorage();
+      }
     });
   }
 

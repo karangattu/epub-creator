@@ -110,9 +110,9 @@
     <main class="app-editor-area">
       <!-- Floating Image options popover -->
       <div class="image-options-popover" id="image-popover" style="display: none;">
-        <button class="toolbar-btn" id="img-align-left" title="Align Left"><i class="bi bi-align-left"></i></button>
+        <button class="toolbar-btn" id="img-align-left" title="Align Left"><i class="bi bi-align-start"></i></button>
         <button class="toolbar-btn" id="img-align-center" title="Align Center"><i class="bi bi-align-center"></i></button>
-        <button class="toolbar-btn" id="img-align-right" title="Align Right"><i class="bi bi-align-right"></i></button>
+        <button class="toolbar-btn" id="img-align-right" title="Align Right"><i class="bi bi-align-end"></i></button>
         <div class="toolbar-divider"></div>
         <button class="toolbar-btn" id="img-delete" title="Delete Image" style="color: var(--danger-color);"><i class="bi bi-trash"></i></button>
       </div>
@@ -124,7 +124,20 @@
           <option value="p">Paragraph</option>
           <option value="h1">Heading 1</option>
           <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+          <option value="h4">Heading 4</option>
+          <option value="pre">Code Block</option>
         </select>
+        
+        <div class="toolbar-divider"></div>
+
+        <!-- Undo/Redo -->
+        <button class="toolbar-btn" data-command="undo" title="Undo (Ctrl+Z)">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button class="toolbar-btn" data-command="redo" title="Redo (Ctrl+Y)">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
         
         <div class="toolbar-divider"></div>
         
@@ -141,6 +154,15 @@
         <button class="toolbar-btn" data-command="strikeThrough" title="Strikethrough">
           <i class="bi bi-type-strikethrough"></i>
         </button>
+        <button class="toolbar-btn" data-command="subscript" title="Subscript">
+          <i class="bi bi-subscript"></i>
+        </button>
+        <button class="toolbar-btn" data-command="superscript" title="Superscript">
+          <i class="bi bi-superscript"></i>
+        </button>
+        <button class="toolbar-btn" data-command="createLink" title="Insert Link">
+          <i class="bi bi-link-45deg"></i>
+        </button>
         <button class="toolbar-btn" data-command="formatBlock" data-value="blockquote" title="Blockquote">
           <i class="bi bi-quote"></i>
         </button>
@@ -149,28 +171,40 @@
 
         <!-- Align options -->
         <button class="toolbar-btn" data-command="justifyLeft" title="Align Left">
-          <i class="bi bi-align-left"></i>
+          <i class="bi bi-text-left"></i>
         </button>
         <button class="toolbar-btn" data-command="justifyCenter" title="Align Center">
-          <i class="bi bi-align-center"></i>
+          <i class="bi bi-text-center"></i>
         </button>
         <button class="toolbar-btn" data-command="justifyRight" title="Align Right">
-          <i class="bi bi-align-right"></i>
+          <i class="bi bi-text-right"></i>
+        </button>
+        <button class="toolbar-btn" data-command="justifyFull" title="Justify">
+          <i class="bi bi-justify"></i>
         </button>
         
         <div class="toolbar-divider"></div>
         
-        <!-- Lists -->
+        <!-- Lists & Indentation -->
         <button class="toolbar-btn" data-command="insertUnorderedList" title="Bullet List">
           <i class="bi bi-list-ul"></i>
         </button>
         <button class="toolbar-btn" data-command="insertOrderedList" title="Numbered List">
           <i class="bi bi-list-ol"></i>
         </button>
+        <button class="toolbar-btn" data-command="outdent" title="Decrease Indent">
+          <i class="bi bi-text-indent-left"></i>
+        </button>
+        <button class="toolbar-btn" data-command="indent" title="Increase Indent">
+          <i class="bi bi-text-indent-right"></i>
+        </button>
         
         <div class="toolbar-divider"></div>
 
-        <!-- Insert image / clear formatting -->
+        <!-- Insert element / clear formatting -->
+        <button class="toolbar-btn" data-command="insertHorizontalRule" title="Insert Divider Line">
+          <i class="bi bi-hr"></i>
+        </button>
         <button class="toolbar-btn" id="toolbar-insert-image" title="Insert Image">
           <i class="bi bi-image"></i>
         </button>
