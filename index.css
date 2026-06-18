@@ -934,3 +934,162 @@ input:checked + .slider:before {
   box-shadow: var(--shadow-lg);
   z-index: 1000;
 }
+
+/* Print Styles */
+@media print {
+  /* Hide all UI elements except the print container */
+  body > *:not(#print-book-container) {
+    display: none !important;
+  }
+  
+  .app-header,
+  .app-container,
+  .drawer,
+  .drawer-backdrop,
+  .progress-overlay,
+  .welcome-overlay,
+  .image-options-popover {
+    display: none !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+    font-family: Georgia, serif !important;
+  }
+
+  #print-book-container {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Page Break Rules */
+  .print-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Title Page Styling */
+  .print-title-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-title {
+    font-size: 3.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .print-author {
+    font-size: 1.6rem;
+    color: #444444;
+    margin-bottom: 2rem;
+  }
+
+  /* Cover Page Styling */
+  .print-cover-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    page-break-after: always;
+    break-after: page;
+    background-color: #ffffff;
+  }
+
+  .print-cover-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* Chapter Section Styling */
+  .print-section {
+    padding: 2.5cm 0;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-section:last-of-type {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .print-section h1 {
+    font-size: 2.4rem;
+    text-align: center;
+    margin-top: 1.5em;
+    margin-bottom: 1.2em;
+    font-family: 'Inter', sans-serif;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .print-section p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    text-align: justify;
+    text-indent: 1.5em;
+    margin-bottom: 0.6em;
+  }
+
+  .print-section p:first-of-type,
+  .print-section h2 + p {
+    text-indent: 0;
+  }
+
+  .print-section img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.8em auto;
+  }
+
+  .print-section blockquote {
+    margin: 1.8em 10%;
+    font-style: italic;
+    border-left: 4px solid #cccccc;
+    padding-left: 1.2em;
+    color: #444444;
+  }
+  
+  .print-section ul, .print-section ol {
+    margin: 1.5em 0;
+    padding-left: 2em;
+  }
+
+  .print-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8em 0;
+  }
+
+  .print-section th, .print-section td {
+    border: 1px solid #dddddd;
+    padding: 0.6em 0.8em;
+    text-align: left;
+  }
+
+  .print-section th {
+    background-color: #f8f8f8;
+    font-weight: bold;
+  }
+}
+
+/* Screen Fallback (Hide print container on screen) */
+#print-book-container {
+  display: none;
+}

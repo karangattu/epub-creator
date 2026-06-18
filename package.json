@@ -1,0 +1,14 @@
+{
+  "name": "epub-creator",
+  "version": "1.0.0",
+  "description": "Visual client-side EPUB and PDF creator.",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}

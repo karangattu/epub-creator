@@ -414,6 +414,9 @@ function bindEvents() {
   // Trigger Export Compilation
   document.getElementById("compile-btn").addEventListener("click", triggerEPUBExport);
 
+  // Trigger PDF Export
+  document.getElementById("pdf-btn").addEventListener("click", triggerPDFExport);
+
   // Markdown File Imports
   const importPageBtn = document.getElementById("import-page-btn");
   const importChapterBtn = document.getElementById("import-chapter-btn");
@@ -996,6 +999,79 @@ async function triggerEPUBExport() {
     alert("Export failed: " + error.message);
     progressOverlay.style.display = "none";
   }
+}
+
+// Format and Compile Book to High Quality PDF
+function triggerPDFExport() {
+  // 1. Remove existing container if exists
+  const existing = document.getElementById("print-book-container");
+  if (existing) existing.remove();
+
+  // 2. Construct print container
+  const printContainer = document.createElement("div");
+  printContainer.id = "print-book-container";
+
+  // 3. Cover page if exists
+  if (state.coverImageURL) {
+    const coverPage = document.createElement("div");
+    coverPage.className = "print-cover-page";
+    coverPage.innerHTML = `<img class="print-cover-img" src="${state.coverImageURL}" alt="Cover Image" />`;
+    printContainer.appendChild(coverPage);
+  }
+
+  // 4. Title Page
+  const titlePage = document.createElement("div");
+  titlePage.className = "print-title-page";
+  titlePage.innerHTML = `
+    <h1 class="print-title">${state.title || "Untitled Book"}</h1>
+    <div class="print-author">By ${state.author || "Unknown Author"}</div>
+    <div style="font-size: 0.95rem; color: #666666; margin-top: 3em; font-family: 'Inter', sans-serif;">Published via EPUB Creator</div>
+  `;
+  printContainer.appendChild(titlePage);
+
+  // 5. Append all chapters and loose pages in order
+  state.items.forEach((item) => {
+    const section = document.createElement("div");
+    section.className = "print-section";
+    
+    // Process content to replace references of data-epub-src with Object URLs for local rendering
+    let renderHTML = item.content;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = renderHTML;
+    const images = tempDiv.querySelectorAll("img[data-epub-src]");
+    images.forEach(img => {
+      const path = img.getAttribute("data-epub-src");
+      if (state.images[path]) {
+        img.src = URL.createObjectURL(state.images[path]);
+      }
+    });
+
+    // XHTML Sanitization
+    const cleanHTML = EPUBBuilder.sanitizeToXHTML(tempDiv.innerHTML);
+
+    section.innerHTML = `
+      <h1>${item.title}</h1>
+      <div class="print-content-body">
+        ${cleanHTML}
+      </div>
+    `;
+    printContainer.appendChild(section);
+  });
+
+  // 6. Append to document body
+  document.body.appendChild(printContainer);
+
+  // 7. Close drawer on print trigger
+  document.getElementById("export-drawer").classList.remove("open");
+  document.getElementById("drawer-backdrop").classList.remove("open");
+
+  // 8. Trigger native browser print
+  // Small timeout to allow images in the DOM to layout
+  setTimeout(() => {
+    window.print();
+    // Clean up print container
+    printContainer.remove();
+  }, 150);
 }
 
 // Global hook bindings for inline buttons in template
