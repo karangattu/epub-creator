@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EPUB Book Builder</title>
+  <!-- Google Fonts: Outfit (UI) and Playfair Display (Editor) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- Bootstrap Icons (Professional-grade Vector Icons) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <!-- JSZip Library for client-side packaging -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  
+  <!-- App JS Scripts -->
+  <script src="epub-builder.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body data-theme="dark">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo-section">
+      <i class="bi bi-book logo-icon"></i>
+      <span class="logo-text">EPUB Creator</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-icon-only" id="theme-toggle" title="Toggle Theme">
+        <i class="bi bi-sun" id="theme-toggle-icon"></i>
+      </button>
+      <button class="btn" id="export-open-btn">
+        <i class="bi bi-box-arrow-down"></i> Export Book
+      </button>
+    </div>
+  </header>
+
+  <!-- Shell Container -->
+  <div class="app-container">
+    
+    <!-- Left Sidebar (Metadata & Structure) -->
+    <aside class="app-sidebar">
+      <!-- Cover Upload / Metadata -->
+      <div class="cover-section">
+        <div class="cover-dropzone" id="cover-dropzone" tabindex="0" title="Upload, drag & drop, or paste cover image">
+          <i class="bi bi-cloud-arrow-up"></i>
+          <span class="cover-dropzone-title">Upload Cover Image</span>
+          <span class="cover-dropzone-subtitle">or drag & drop / paste (Ctrl+V)</span>
+          <input type="file" id="cover-file-input" style="display: none;" accept="image/*">
+        </div>
+        
+        <div class="book-meta-inputs">
+          <div class="input-group">
+            <label class="input-label" for="book-title-input">Book Title</label>
+            <input type="text" class="form-input" id="book-title-input" placeholder="Untitled Book">
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="book-author-input">Author</label>
+            <input type="text" class="form-input" id="book-author-input" placeholder="Author Name">
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation & Structural lists -->
+      <div class="nav-section">
+        <!-- Section: Loose pages (without chapters) -->
+        <div class="nav-header">
+          <span class="nav-title">Loose Pages</span>
+          <button class="nav-action-btn" id="add-page-btn" title="Add Page Without Chapter">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+        <ul class="nav-list" id="loose-pages-list">
+          <!-- Populated by JS -->
+        </ul>
+
+        <div class="sidebar-divider"></div>
+
+        <!-- Section: Chapters -->
+        <div class="nav-header">
+          <span class="nav-title">Book Chapters</span>
+          <button class="nav-action-btn" id="add-chapter-btn" title="Add Chapter">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+        <ul class="nav-list" id="chapters-list">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Center Canvas (WYSIWYG Editor) -->
+    <main class="app-editor-area">
+      <!-- Formatting Toolbar -->
+      <div class="editor-toolbar">
+        <!-- Paragraph formats -->
+        <select class="toolbar-select" id="toolbar-format" title="Paragraph Format">
+          <option value="" disabled selected>Formatting</option>
+          <option value="p">Paragraph</option>
+          <option value="h1">Heading 1</option>
+          <option value="h2">Heading 2</option>
+        </select>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Style formatting -->
+        <button class="toolbar-btn" data-command="bold" title="Bold (Ctrl+B)">
+          <i class="bi bi-type-bold"></i>
+        </button>
+        <button class="toolbar-btn" data-command="italic" title="Italic (Ctrl+I)">
+          <i class="bi bi-type-italic"></i>
+        </button>
+        <button class="toolbar-btn" data-command="underline" title="Underline (Ctrl+U)">
+          <i class="bi bi-type-underline"></i>
+        </button>
+        <button class="toolbar-btn" data-command="strikeThrough" title="Strikethrough">
+          <i class="bi bi-type-strikethrough"></i>
+        </button>
+        <button class="toolbar-btn" data-command="formatBlock" data-value="blockquote" title="Blockquote">
+          <i class="bi bi-quote"></i>
+        </button>
+        
+        <div class="toolbar-divider"></div>
+
+        <!-- Align options -->
+        <button class="toolbar-btn" data-command="justifyLeft" title="Align Left">
+          <i class="bi bi-align-left"></i>
+        </button>
+        <button class="toolbar-btn" data-command="justifyCenter" title="Align Center">
+          <i class="bi bi-align-center"></i>
+        </button>
+        <button class="toolbar-btn" data-command="justifyRight" title="Align Right">
+          <i class="bi bi-align-right"></i>
+        </button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <!-- Lists -->
+        <button class="toolbar-btn" data-command="insertUnorderedList" title="Bullet List">
+          <i class="bi bi-list-ul"></i>
+        </button>
+        <button class="toolbar-btn" data-command="insertOrderedList" title="Numbered List">
+          <i class="bi bi-list-ol"></i>
+        </button>
+        
+        <div class="toolbar-divider"></div>
+
+        <!-- Insert image / clear formatting -->
+        <button class="toolbar-btn" id="toolbar-insert-image" title="Insert Image">
+          <i class="bi bi-image"></i>
+        </button>
+        <button class="toolbar-btn" data-command="removeFormat" title="Clear Formatting">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </div>
+
+      <!-- Main Editor view -->
+      <div class="editor-container">
+        <div class="editor-content-wrapper">
+          <input type="text" class="editor-title-input" id="editor-title-input" placeholder="Page Title">
+          <div class="editor-body" id="editor-body" contenteditable="true" placeholder="Start writing or paste images here..."></div>
+        </div>
+      </div>
+
+      <!-- Editor Footer (Status) -->
+      <div class="editor-footer">
+        <span id="status-label">Draft autosaved.</span>
+        <div class="footer-info">
+          <span id="word-count-badge">0 words</span>
+        </div>
+      </div>
+
+      <!-- Welcome Overlay Screen -->
+      <div class="welcome-overlay" id="welcome-overlay" style="display: none;">
+        <i class="bi bi-book-half welcome-logo"></i>
+        <h2 class="welcome-title">Your Masterpiece Awaits</h2>
+        <p class="welcome-subtitle">Create a chapter or a loose page from the sidebar to begin writing and styling your e-book.</p>
+        <div class="welcome-actions">
+          <button class="btn" onclick="addPage(true)">
+            <i class="bi bi-plus-lg"></i> Create Chapter
+          </button>
+          <button class="btn btn-secondary" onclick="addPage(false)">
+            <i class="bi bi-plus-lg"></i> Create Loose Page
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Drawers / Modals -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  <div class="drawer" id="export-drawer">
+    <div class="drawer-header">
+      <span class="drawer-title">Export Settings</span>
+      <button class="drawer-close" id="drawer-close"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="drawer-body">
+      <!-- Advanced settings panel -->
+      <div class="input-group">
+        <label class="input-label" for="book-publisher-input">Publisher</label>
+        <input type="text" class="form-input" id="book-publisher-input" placeholder="Self-Published">
+      </div>
+      
+      <div class="input-group">
+        <label class="input-label" for="book-lang-input">Language</label>
+        <select class="form-input" id="book-lang-input">
+          <option value="en" selected>English (en)</option>
+          <option value="fr">French (fr)</option>
+          <option value="de">German (de)</option>
+          <option value="es">Spanish (es)</option>
+          <option value="it">Italian (it)</option>
+          <option value="ja">Japanese (ja)</option>
+        </select>
+      </div>
+
+      <div class="switch-container">
+        <div class="switch-label-group">
+          <div class="switch-label">Optimize for Kobo (KePub)</div>
+          <div class="switch-desc">Wraps sentences in spans and saves as .kepub.epub</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="kepub-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="sidebar-divider" style="margin: 10px 0;"></div>
+
+      <div class="input-group">
+        <label class="input-label">Validation Checklist</label>
+        <div class="validation-list" id="validation-report">
+          <!-- Checked dynamically in JS -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="drawer-footer">
+      <button class="btn" style="width: 100%; justify-content: center; height: 44px;" id="compile-btn">
+        <i class="bi bi-download"></i> Compile & Download
+      </button>
+    </div>
+  </div>
+
+  <!-- Exporting Progress Modal -->
+  <div class="progress-overlay" id="progress-overlay">
+    <div class="progress-spinner"></div>
+    <div class="progress-title">Compiling book files...</div>
+  </div>
+
+</body>
+</html>
