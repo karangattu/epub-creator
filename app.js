@@ -996,7 +996,7 @@ function handleDragEnd() {
 // UI State Syncing
 function updateWordCount() {
   const editorBody = document.getElementById("editor-body");
-  const text = editorBody.innerText || "";
+  const text = editorBody.textContent || "";
   const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
   document.getElementById("word-count-badge").textContent = `${words} words`;
 }

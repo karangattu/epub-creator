@@ -110,16 +110,15 @@ class EPUBBuilder {
     // 4. Process all book items (chapters and loose pages)
     let itemCounter = 1;
     for (const item of bookData.items) {
-      const sanitizedContent = this.sanitizeToXHTML(item.content);
-      let finalHTML = sanitizedContent;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(`<div>${item.content}</div>`, "text/html");
+      const rootDiv = doc.querySelector("div") || doc.body;
 
       if (isKepub) {
-        // Sentence wrap paragraphs/headings/lists for KePub
-        finalHTML = this.wrapSentencesForKepub(finalHTML, itemCounter);
-        // Re-sanitize to guarantee XML validity after DOM manipulation
-        finalHTML = this.sanitizeToXHTML(finalHTML);
+        this.wrapDocSentences(rootDiv, itemCounter, doc);
       }
 
+      const finalHTML = this.serializeDOMToXHTML(rootDiv);
       const fileId = `item-${itemCounter}`;
       const filename = `content/${fileId}.xhtml`;
 
@@ -221,15 +220,9 @@ class EPUBBuilder {
   }
 
   /**
-   * Helper to sanitize editor HTML to valid XHTML.
+   * Helper to serialize a DOM tree node into valid XHTML syntax.
    */
-  static sanitizeToXHTML(htmlContent) {
-    if (!htmlContent) return "";
-    const parser = new DOMParser();
-    // Wrap in a div to ensure a single root element during parse
-    const doc = parser.parseFromString(`<div>${htmlContent}</div>`, "text/html");
-    const root = doc.querySelector("div") || doc.body;
-
+  static serializeDOMToXHTML(root) {
     function serialize(node) {
       if (node.nodeType === Node.TEXT_NODE) {
         return node.nodeValue
@@ -281,24 +274,27 @@ class EPUBBuilder {
   }
 
   /**
+   * Helper to sanitize editor HTML to valid XHTML.
+   */
+  static sanitizeToXHTML(htmlContent) {
+    if (!htmlContent) return "";
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${htmlContent}</div>`, "text/html");
+    const root = doc.querySelector("div") || doc.body;
+    return this.serializeDOMToXHTML(root);
+  }
+
+  /**
    * Sentence wrapper function that parses block elements in XHTML and wraps
    * each sentence with a span.koboSpan, which triggers advanced Kobo features.
    */
   static wrapSentencesForKepub(xhtmlContent, chapterIndex) {
     if (!xhtmlContent) return "";
     const parser = new DOMParser();
-    // Parse as XHTML so standard namespaces are preserved
-    const doc = parser.parseFromString(`<div>${xhtmlContent}</div>`, "application/xhtml+xml");
-    
-    // Check for XML parse errors
-    const parserError = doc.querySelector("parsererror");
-    if (parserError) {
-      // Fallback: If XHTML parsing fails, parse as HTML and clean up
-      const htmlDoc = parser.parseFromString(`<div>${xhtmlContent}</div>`, "text/html");
-      return this.wrapDocSentences(htmlDoc.querySelector("div"), chapterIndex, htmlDoc);
-    }
-
-    return this.wrapDocSentences(doc.querySelector("div"), chapterIndex, doc);
+    const doc = parser.parseFromString(`<div>${xhtmlContent}</div>`, "text/html");
+    const root = doc.querySelector("div") || doc.body;
+    this.wrapDocSentences(root, chapterIndex, doc);
+    return this.serializeDOMToXHTML(root);
   }
 
   static wrapDocSentences(root, chapterIndex, doc) {
@@ -344,7 +340,7 @@ class EPUBBuilder {
     }
 
     root.childNodes.forEach(child => processNode(child));
-    return root.innerHTML;
+    return root;
   }
 
   /**
