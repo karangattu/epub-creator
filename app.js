@@ -20,6 +20,57 @@ const state = {
   theme: "dark"
 };
 
+// IndexedDB Helper Functions
+const dbName = "EPUBBookBuilderDB";
+const storeName = "draftStore";
+
+function getDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName);
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function dbGet(key) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readonly");
+    const store = transaction.objectStore(storeName);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function dbSet(key, value) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.put(value, key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function dbDelete(key) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // State Helpers
 function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -92,59 +143,50 @@ function toggleTheme() {
   }
 }
 
-// Save & Load state to localStorage
-// Images and cover images are serialized as Base64 strings to keep persistence across refreshes.
+// Save & Load state to IndexedDB
+// Raw Blob objects (covers, pasted images) are stored directly using Structured Cloning.
 const saveBookToStorage = debounce(async () => {
-  const serializedState = {
+  const draftData = {
     title: state.title,
     author: state.author,
     publisher: state.publisher,
     language: state.language,
     uuid: state.uuid,
     items: state.items,
-    theme: state.theme
+    theme: state.theme,
+    coverImage: state.coverImage,
+    coverImageType: state.coverImageType,
+    images: state.images
   };
 
-  // Convert cover image to base64
-  if (state.coverImage) {
-    serializedState.coverImageType = state.coverImageType;
-    serializedState.coverImageBase64 = await blobToBase64(state.coverImage);
+  try {
+    await dbSet("book-draft", draftData);
+    updateStatusBar("Saved draft.");
+  } catch (err) {
+    console.error("IndexedDB save failed:", err);
+    updateStatusBar("Error saving draft.");
   }
-
-  // Convert pasted/inserted images to base64
-  const serializedImages = {};
-  for (const [path, blob] of Object.entries(state.images)) {
-    serializedImages[path] = {
-      type: blob.type,
-      base64: await blobToBase64(blob)
-    };
-  }
-  serializedState.images = serializedImages;
-
-  localStorage.setItem("epub-creator-draft", JSON.stringify(serializedState));
-  updateStatusBar("Saved draft.");
 }, 1000);
 
 async function loadSavedBook() {
-  const savedData = localStorage.getItem("epub-creator-draft");
-  if (!savedData) {
-    // New Book Init
-    state.uuid = generateUUID();
-    state.items = [
-      { id: "intro-1", title: "Introduction", content: "<p>Welcome to your new book. Start writing here...</p>", isChapter: false },
-      { id: "chapter-1", title: "Chapter 1: The Beginning", content: "<p>Once upon a time...</p>", isChapter: true }
-    ];
-    return;
-  }
-
   try {
-    const parsed = JSON.parse(savedData);
-    state.title = parsed.title || "";
-    state.author = parsed.author || "";
-    state.publisher = parsed.publisher || "Self-Published";
-    state.language = parsed.language || "en";
-    state.uuid = parsed.uuid || generateUUID();
-    state.items = parsed.items || [];
+    const draftData = await dbGet("book-draft");
+    if (!draftData) {
+      // New Book Init
+      state.uuid = generateUUID();
+      state.items = [
+        { id: "intro-1", title: "Introduction", content: "<p>Welcome to your new book. Start writing here...</p>", isChapter: false },
+        { id: "chapter-1", title: "Chapter 1: The Beginning", content: "<p>Once upon a time...</p>", isChapter: true }
+      ];
+      return;
+    }
+
+    state.title = draftData.title || "";
+    state.author = draftData.author || "";
+    state.publisher = draftData.publisher || "Self-Published";
+    state.language = draftData.language || "en";
+    state.uuid = draftData.uuid || generateUUID();
+    state.items = draftData.items || [];
     
     // Load metadata inputs
     document.getElementById("book-title-input").value = state.title;
@@ -153,34 +195,20 @@ async function loadSavedBook() {
     document.getElementById("book-lang-input").value = state.language;
 
     // Load cover image
-    if (parsed.coverImageBase64) {
-      state.coverImageType = parsed.coverImageType;
-      const response = await fetch(parsed.coverImageBase64);
-      state.coverImage = await response.blob();
+    if (draftData.coverImage) {
+      state.coverImage = draftData.coverImage;
+      state.coverImageType = draftData.coverImageType;
       state.coverImageURL = URL.createObjectURL(state.coverImage);
       showCoverPreview(state.coverImageURL);
     }
 
     // Load images
-    if (parsed.images) {
-      for (const [path, imgData] of Object.entries(parsed.images)) {
-        const response = await fetch(imgData.base64);
-        state.images[path] = await response.blob();
-      }
+    if (draftData.images) {
+      state.images = draftData.images;
     }
   } catch (err) {
-    console.error("Failed to load saved draft:", err);
+    console.error("Failed to load saved draft from IndexedDB:", err);
   }
-}
-
-// Convert blob to base64 utility
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 // Event Bindings
@@ -188,13 +216,13 @@ function bindEvents() {
   // Reset App Button
   const resetBtn = document.getElementById("reset-app-btn");
   if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
+    resetBtn.addEventListener("click", async () => {
       const confirmReset = confirm(
         "Are you sure you want to reset everything? This will clear all pages, chapters, metadata, covers, and local storage data. This action cannot be undone."
       );
       if (confirmReset) {
-        // Clear local storage
-        localStorage.removeItem("epub-creator-draft");
+        // Clear local storage / IndexedDB
+        await dbDelete("book-draft");
         
         // Revoke cover image object URL
         if (state.coverImageURL) {
@@ -653,20 +681,66 @@ function initImagePopover() {
   }
 }
 
+// Compress and resize image using canvas to fit localStorage limits (max 1000px width, 0.75 quality JPEG)
+function compressImage(file, maxWidth = 1000, quality = 0.75) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.type === "image/gif") {
+      // Don't compress non-images or gifs to preserve animation
+      resolve(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Resize if larger than maxWidth
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to blob
+        canvas.toBlob((blob) => {
+          if (blob && blob.size < file.size) {
+            // Only return compressed version if it is actually smaller
+            resolve(blob);
+          } else {
+            resolve(file);
+          }
+        }, "image/jpeg", quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // Handle Cover Image upload
-function handleCoverFile(file) {
+async function handleCoverFile(file) {
   if (!file.type.startsWith("image/")) {
     alert("Please select a valid image file for the cover.");
     return;
   }
   
-  state.coverImage = file;
-  state.coverImageType = file.type;
+  const compressed = await compressImage(file, 1200, 0.8);
+  state.coverImage = compressed;
+  state.coverImageType = compressed.type;
   
   if (state.coverImageURL) {
     URL.revokeObjectURL(state.coverImageURL);
   }
-  state.coverImageURL = URL.createObjectURL(file);
+  state.coverImageURL = URL.createObjectURL(compressed);
   showCoverPreview(state.coverImageURL);
   saveBookToStorage();
 }
@@ -712,19 +786,21 @@ function removeCoverImage() {
 }
 
 // Handle pasting images into the Editor
-function handlePasteImage(file) {
+async function handlePasteImage(file) {
   const timestamp = Date.now();
   const rand = Math.floor(Math.random() * 10000);
   
+  const compressed = await compressImage(file, 1000, 0.75);
+  
   let ext = "png";
-  if (file.type === "image/jpeg") ext = "jpg";
-  if (file.type === "image/gif") ext = "gif";
-  if (file.type === "image/svg+xml") ext = "svg";
+  if (compressed.type === "image/jpeg") ext = "jpg";
+  if (compressed.type === "image/gif") ext = "gif";
+  if (compressed.type === "image/svg+xml") ext = "svg";
 
   const imgPath = `images/img_${timestamp}_${rand}.${ext}`;
-  state.images[imgPath] = file;
+  state.images[imgPath] = compressed;
 
-  const objectUrl = URL.createObjectURL(file);
+  const objectUrl = URL.createObjectURL(compressed);
 
   // Insert the image into the selection
   const imgHTML = `<img src="${objectUrl}" data-epub-src="${imgPath}" alt="Book Illustration" />`;
